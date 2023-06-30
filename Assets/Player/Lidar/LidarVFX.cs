@@ -35,7 +35,6 @@ namespace Tools.Lidar
             LineRenderer lineRenderer = line.GetComponents<LineRenderer>().First();
 
             lineRenderer.startWidth = lineWidth;
-            lineRenderer.endWidth = lineWidth + 0.005f;
             lineRenderer.SetPosition(0, Vector3.zero);
             lineRenderer.SetPosition(1, Vector3.zero);
 

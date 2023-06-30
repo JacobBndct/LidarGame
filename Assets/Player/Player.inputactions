@@ -29,16 +29,25 @@
                     "id": "55a700aa-ed73-42fc-9236-4a2f442b88c5",
                     "expectedControlType": "Button",
                     "processors": "",
-                    "interactions": "Hold(duration=0.1,pressPoint=0.5)",
+                    "interactions": "Hold(duration=0.25,pressPoint=0.5)",
                     "initialStateCheck": false
                 },
                 {
-                    "name": "FocusedLidarScan",
+                    "name": "IncreaseEnergy",
                     "type": "Button",
-                    "id": "62038984-fd04-42c3-83fe-29546d13a176",
+                    "id": "94cea476-94f9-4e51-83f8-56e74c511dc5",
                     "expectedControlType": "Button",
                     "processors": "",
-                    "interactions": "Hold",
+                    "interactions": "MultiTap",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "ChangeModes",
+                    "type": "Button",
+                    "id": "2a6b9abe-e7b6-439c-b235-4b8183039681",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "MultiTap(tapCount=1)",
                     "initialStateCheck": false
                 }
             ],
@@ -199,23 +208,23 @@
                 },
                 {
                     "name": "",
-                    "id": "e8807622-9047-4e44-8f24-d67edb584bcc",
-                    "path": "<Gamepad>/rightShoulder",
+                    "id": "118ecf68-0ff8-468b-bd51-b4028151d1f9",
+                    "path": "<Keyboard>/e",
                     "interactions": "",
                     "processors": "",
-                    "groups": "Gamepad",
-                    "action": "FocusedLidarScan",
+                    "groups": "Keyboard&Mouse",
+                    "action": "IncreaseEnergy",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
                     "name": "",
-                    "id": "09ff767f-025f-4858-af18-db0b842ac5e8",
-                    "path": "<Mouse>/leftButton",
+                    "id": "82a25b72-1d6d-4a87-aba8-10f3a225cd74",
+                    "path": "<Keyboard>/e",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
-                    "action": "FocusedLidarScan",
+                    "action": "ChangeModes",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

@@ -15,101 +15,139 @@ namespace Tools.Lidar
     {
         [Header("Line Parameters")]
         [Range(1, 90)]
-        [SerializeField] int numberOfBeams;
-        [SerializeField] float maxBeamDistance, lineWidth;
-        [SerializeField] Material lineMaterial;
-        [SerializeField] GameObject laserPrefab;
+        [SerializeField] int _numberOfBeamsScan;
+        [Range(1, 45)]
+        [SerializeField] int _numberOfBeamsFocused;
+        [SerializeField] float _maxBeamDistance, _lineWidth;
+        [SerializeField] GameObject _laserPrefab;
 
         [Header("Lidar Parameters")]
-        [SerializeField] int beamEnergy;
-        [SerializeField] int maxEnergy;
-        [SerializeField] int energyRefresh;
-        [SerializeField] int currentEnergy = 0;
+        [SerializeField] int _maxEnergy;
+        [SerializeField] int _energyRefresh;
+        [SerializeField] int _currentEnergy = 0;
         [Range(0f, 1f)]
-        [SerializeField] float percentageVariance;
-        [SerializeField] int lidarHorizontalSteps, lidarVerticalSteps;
-        [SerializeField] float horizontalScanRange, verticleScanRange;
-        [SerializeField] float horizontalScanTime, verticleScanTime;
+        [SerializeField] float _percentageVariance;
+        [SerializeField] int _lidarHorizontalSteps, _lidarVerticalSteps;
+        [SerializeField] float _horizontalScanRange, _verticleScanRange;
+        [SerializeField] float _horizontalScanTime, _verticleScanTime;
+        [SerializeField] float _focusedScanRadius;
+        [SerializeField] SetSlider energySlider;
 
         [Header("Particle Parameters")]
-        [SerializeField] VisualEffect VFX;
+        [SerializeField] VisualEffect _VFX;
 
-        List<LineRenderer> beams = new List<LineRenderer>();
-        Coroutine lidarScan;
+        List<LineRenderer> _beams = new List<LineRenderer>();
+        Coroutine _lidarScan;
+        LidarMode _currentMode;
+        [SerializeField] EnergyLevels _energyLevel;
+        bool _canRegen;
+
+        enum LidarMode
+        {
+            Wide,
+            Focused,
+        }
+
+        enum EnergyLevels
+        {
+            Low = 5,
+            Medium = 10,
+            High = 20,
+        }
+
+        private void Awake()
+        {
+            _currentMode = LidarMode.Wide;
+            _energyLevel = EnergyLevels.Low;
+            energySlider.SetSliderMax(_maxEnergy);
+        }
 
         private void Update()
         {
-            if (lidarScan == null && currentEnergy < maxEnergy)
+            if (_lidarScan == null && _currentEnergy < _maxEnergy)
             {
-                currentEnergy += energyRefresh;
+                _currentEnergy += _energyRefresh;
+                energySlider.SetSliderValue(_currentEnergy);
             }
         }
 
-        public void StartLidarScan(InputAction.CallbackContext context)
+        public void StartScan(InputAction.CallbackContext context)
         {
             if (context.performed)
             {
-                lidarScan = StartCoroutine(LidarScan());
+                switch(_currentMode) {
+                    case LidarMode.Wide:
+                        _lidarScan = StartCoroutine(WideScan());
+                        break;
+                    case LidarMode.Focused:
+                        _lidarScan = StartCoroutine(FocusedScan());
+                        break;
+                    default:
+                        break;
+                }
             }
             else if (context.canceled)
             {
-                CancelLidarScan();
+                CancelScan();
             }
         }
 
-        public void StartFocusedLidarScan(InputAction.CallbackContext context)
+        public void SwapModes(InputAction.CallbackContext context)
         {
-            if (context.performed && lidarScan == null)
+            if (context.performed)
             {
-                lidarScan = StartCoroutine(FocusedLidarScan());
-            }
-            else if (context.canceled)
-            {
-                CancelLidarScan();
+                _currentMode = EnumHelper.Next(_currentMode);
             }
         }
 
-        public void CancelLidarScan()
+        public void IncrementEnergy(InputAction.CallbackContext context)
         {
-            if (lidarScan != null)
+            if (context.performed)
             {
-                StopCoroutine(lidarScan);
-                LidarVFX.DestroyBeams(beams);
-                lidarScan = null;
+                _energyLevel = EnumHelper.Next(_energyLevel);
             }
         }
 
-        IEnumerator LidarScan()
+        public void CancelScan()
         {
-            float horizontalStepSize = horizontalScanRange / lidarHorizontalSteps;
-            float verticalStepSize = verticleScanRange / lidarVerticalSteps;
-
-            float horizontalStartingPoint = -horizontalScanRange / 2;
-            float verticalStartingSize = -verticleScanRange / 2;
-
-            float horizontalTimeStep = horizontalScanTime / lidarHorizontalSteps;
-            float verticalTimeStep = verticleScanTime / lidarVerticalSteps;
-
-            LidarVFX.CreatedBeams(beams, numberOfBeams, laserPrefab, this.transform, lineWidth);
-
-            for (int i = 0; i < lidarVerticalSteps; i++)
+            if (_lidarScan != null)
             {
-                for (int j = 0; j < lidarHorizontalSteps; j += numberOfBeams)
+                StopCoroutine(_lidarScan);
+                LidarVFX.DestroyBeams(_beams);
+                _lidarScan = null;
+            }
+        }
+
+        IEnumerator WideScan()
+        {
+            float horizontalStepSize = _horizontalScanRange / _lidarHorizontalSteps;
+            float verticalStepSize = _verticleScanRange / _lidarVerticalSteps;
+
+            float horizontalStartingPoint = -_horizontalScanRange / 2;
+            float verticalStartingSize = -_verticleScanRange / 2;
+
+            float horizontalTimeStep = _horizontalScanTime / _lidarHorizontalSteps;
+            float verticalTimeStep = _verticleScanTime / _lidarVerticalSteps;
+
+            LidarVFX.CreatedBeams(_beams, _numberOfBeamsScan, _laserPrefab, this.transform, _lineWidth);
+
+            for (int i = 0; i < _lidarVerticalSteps; i++)
+            {
+                for (int j = 0; j < _lidarHorizontalSteps; j += _numberOfBeamsScan)
                 {
-                    Vector3[] directions = new Vector3[numberOfBeams + 1];
-                    for (int k = 0; k < numberOfBeams; k++)
+                    Vector3[] directions = new Vector3[_numberOfBeamsScan + 1];
+                    for (int k = 0; k < _numberOfBeamsScan; k++)
                     {
                         int beamNum = j + k;
                         int isEven = beamNum % 2;
 
-                        float xVarience = Random.Range(-percentageVariance, percentageVariance);
-                        float yVarience = Random.Range(-percentageVariance, percentageVariance);
+                        float xVarience = Random.Range(-_percentageVariance, _percentageVariance);
+                        float yVarience = Random.Range(-_percentageVariance, _percentageVariance);
 
                         float xRotationAngle = verticalStartingSize + verticalStepSize * (i + yVarience);
-                        float yRotationAngle = horizontalStartingPoint + horizontalStepSize * ((lidarHorizontalSteps * isEven) + ((beamNum + xVarience) * Mathf.Pow(-1, isEven)));
+                        float yRotationAngle = horizontalStartingPoint + horizontalStepSize * ((_lidarHorizontalSteps * isEven) + ((beamNum + xVarience) * Mathf.Pow(-1, isEven)));
 
-                        Vector3 direction = Quaternion.AngleAxis(xRotationAngle, transform.right) * (Quaternion.AngleAxis(yRotationAngle, transform.up) * transform.forward);
-                        directions[k] = direction;
+                        directions[k] = Quaternion.AngleAxis(xRotationAngle, transform.right) * (Quaternion.AngleAxis(yRotationAngle, transform.up) * transform.forward);
                     }
                     LidarBeamBurst(directions);
                     yield return new WaitForSeconds(horizontalTimeStep);
@@ -117,28 +155,26 @@ namespace Tools.Lidar
                 yield return new WaitForSeconds(verticalTimeStep);
             }
 
-            LidarVFX.DestroyBeams(beams);
-            CancelLidarScan();
+            CancelScan();
         }
 
-        IEnumerator FocusedLidarScan()
+        IEnumerator FocusedScan()
         {
-            int newBeams = numberOfBeams / 10;
-            LidarVFX.CreatedBeams(beams, newBeams, laserPrefab, this.transform, lineWidth);
+            LidarVFX.CreatedBeams(_beams, _numberOfBeamsFocused, _laserPrefab, this.transform, _lineWidth);
 
             while (true)
             {
                 //create n direction vectors around the transform forward
-                Vector3[] directions = new Vector3[newBeams];
-                for (int i = 0; i < newBeams; i++)
+                Vector3[] directions = new Vector3[_numberOfBeamsFocused];
+                for (int i = 0; i < _numberOfBeamsFocused; i++)
                 {
                     float xVarience, yVarience;
 
                     do
                     {
-                        xVarience = Random.Range(-percentageVariance * 10, percentageVariance * 10);
-                        yVarience = Random.Range(-percentageVariance * 10, percentageVariance * 10);
-                    } while (Mathf.Sqrt(Mathf.Pow(xVarience, 2) + Mathf.Pow(yVarience, 2)) > percentageVariance * 10);
+                        xVarience = Random.Range(-_focusedScanRadius, _focusedScanRadius);
+                        yVarience = Random.Range(-_focusedScanRadius, _focusedScanRadius);
+                    } while (Mathf.Sqrt(Mathf.Pow(xVarience, 2) + Mathf.Pow(yVarience, 2)) > _focusedScanRadius);
 
                     directions[i] = Quaternion.AngleAxis(xVarience, transform.right) * (Quaternion.AngleAxis(yVarience, transform.up) * transform.forward);
                 }
@@ -152,35 +188,42 @@ namespace Tools.Lidar
         void LidarBeamBurst(Vector3[] directions)
         {
             int length = directions.Length - 1;
+            int beamEnergy = (int)_energyLevel;
 
-            int particleInfoAmount = 2;
-            Texture2D particleInfo = new Texture2D(numberOfBeams, particleInfoAmount, TextureFormat.RGBAFloat, false);
+            if (_currentEnergy - (beamEnergy * length) <= 0)
+            {
+                CancelScan();
+                return;
+            }
+
+            _currentEnergy -= (beamEnergy * length);
+            energySlider.SetSliderValue(_currentEnergy);
+
+            int particleInfoAmount = 3;
+            Texture2D particleInfo = new Texture2D(_numberOfBeamsScan, particleInfoAmount, TextureFormat.RGBAFloat, false);
 
             for (int i = 0; i < length; i++)
             {
-                RaycastHit hit = LidarBeam(directions[i], beams[i % numberOfBeams]);
-                LidarVFX.UpdateBeam(beams[i % numberOfBeams]);
+                RaycastHit hit = LidarBeam(directions[i], _beams[i % _numberOfBeamsScan]);
+                LidarVFX.UpdateBeam(_beams[i % _numberOfBeamsScan]);
 
-                Vector3 offset = hit.normal * 0.0001f;
-                Vector3 spawnPos = hit.point + offset;
-
-                Quaternion rotationQuaternion = Quaternion.LookRotation(hit.normal, Vector3.up);
-                Vector3 normal = rotationQuaternion.eulerAngles;
-
-                //Debug.DrawRay(spawnPos, normal);
-                particleInfo.SetPixel(i, 0, LidarVFX.Vector3ToVector4(spawnPos));
-                particleInfo.SetPixel(i, 1, LidarVFX.Vector3ToVector4(normal));
-
-                currentEnergy -= beamEnergy;
-                if (currentEnergy < 0)
+                if (hit.transform != null)
                 {
-                    CancelLidarScan();
-                    break;
+                    Vector3 offset = hit.normal * 0.0001f;
+                    Vector3 spawnPos = hit.point + offset;
+                    float particleEnergy = beamEnergy * Random.Range(0.5f, 2f);
+
+                    Quaternion rotationQuaternion = Quaternion.LookRotation(hit.normal, Vector3.up);
+                    Vector3 normal = rotationQuaternion.eulerAngles;
+
+                    particleInfo.SetPixel(i, 0, LidarVFX.Vector3ToVector4(spawnPos));
+                    particleInfo.SetPixel(i, 1, LidarVFX.Vector3ToVector4(normal));
+                    particleInfo.SetPixel(i, 2, new Color(191f/255f, 12f/255f, 12f/255f, 1f) * particleEnergy);
                 }
             }
 
             particleInfo.Apply();
-            LidarVFX.DrawParticles(particleInfo, VFX, numberOfBeams, beamEnergy, beamEnergy + 0.5f);
+            LidarVFX.DrawParticles(particleInfo, _VFX, _numberOfBeamsScan, beamEnergy, beamEnergy + 0.5f);
         }
 
         RaycastHit LidarBeam(Vector3 direction, LineRenderer lineRenderer)
@@ -189,27 +232,29 @@ namespace Tools.Lidar
 
             Ray ray = new Ray(transform.position, direction);
 
-            if (Physics.Raycast(ray, out hit, maxBeamDistance))
+            if (Physics.Raycast(ray, out hit, _maxBeamDistance))
             {
                 ObjectMaterial[] materials = hit.transform.gameObject.GetComponents<ObjectMaterial>();
+
                 if (materials.Length > 0)
                 {
                     Debug.Log("material hit");
                     foreach (ObjectMaterial material in materials)
                     {
-                        material.OnHit(beamEnergy);
+                        material.OnHit((int)_energyLevel);
                     }
                 }
                 else
                 {
                     Debug.Log("default hit");
                 }
+
                 lineRenderer.SetPosition(1, transform.InverseTransformPoint(hit.point));
             }
             else
             {
                 Debug.Log("Miss");
-                lineRenderer.SetPosition(1, transform.InverseTransformPoint(direction * maxBeamDistance));
+                lineRenderer.SetPosition(1, transform.InverseTransformPoint(transform.position + direction * _maxBeamDistance));
             }
 
             return hit;
